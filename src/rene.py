@@ -120,7 +120,8 @@ class Incrementor:
                 self.incr_obj = Incrementor.AlnumIncrementor(*args, **kwargs)
             else :
                 raise ValueError(f'There is no incrementor type like \'{incrType}\'')
-        except TypeError:
+        except TypeError as te:
+            raise te
             show_error(f'Invalid arguments passed to {incrType.capitalize()}Incrementor')
 
     def incr(self):
@@ -145,10 +146,11 @@ class Incrementor:
 
     class NumIncrementor:
         # args can be int or string representation of int
-        def __init__ (self, init=0, step=1, width=0):
+        def __init__ (self, init=0, step=1, width=None):
             try :
                 self.current = int(init)
-                self.min_width=int(width)
+                # width is calculated using init (i.e. 0001 is taken as same as 0001 not 1)
+                self.min_width= int(width) if width is not None else len(init) if type(init) is str else 0
                 self.incr_step=int(step)
             except ValueError:
                 show_error('Invalid arguments to NumIncrementor')
@@ -167,7 +169,7 @@ class Incrementor:
         alpha_lower = [ chr(i) for i in range(97, 123) ]
         alpha_all = alpha_upper + alpha_lower
 
-        def __init__ (self, init: str='A', step=1, case: Optional[str]=None,) :
+        def __init__ (self, init: str='A', step=1, case: Optional[str]=None) :
             # if case is None, the case of initial is used
             if case == None :
                 if init.isupper() :
@@ -204,7 +206,7 @@ class Incrementor:
     
     class AlnumIncrementor:
         
-        def __init__ (self, init='A0', step=1, case=None, intWidth=1, intMaxCount=None):
+        def __init__ (self, init='A0', step=1, case=None, intWidth=None, intMaxCount=None):
             try:
                 self.incr_step = int(step)
                 if self.incr_step < 0 :
@@ -214,15 +216,16 @@ class Incrementor:
                 if len(temp_)!=2:
                     show_error(f'{init} is not a valid initial value for AlnumIncrementor')
                 # current uses AlphaIncrementor for alphabet part
-                self.current  = [Incrementor.AlphaIncrementor(temp_[0], case), 
+                self.current  = [Incrementor.AlphaIncrementor(temp_[0], case=case), 
                                     int(temp_[1])]
-                self.int_min_width = int(intWidth)
+                # intWidth is calculated using init, if it is not given (i.e. 0001 is taken as same as 0001 not 1)
+                self.int_min_width = len(temp_[1]) if intWidth is None else int(intWidth)
                 # if max count is None, it is calculated based on width
                 self.int_max_count = int('1'+('0'*self.int_min_width)) if not intMaxCount else int(intMaxCount)
             except ValueError : 
                 show_error("Invalid arguments passed to AlnumIncrementor")
 
-            if self.min_width<0 :
+            if self.int_min_width<0 :
                 show_error('Width cannot be negative')
 
         def incr(self, step=None):
@@ -295,7 +298,7 @@ def rename(name_map):
     for item, new_name in name_map.items() :
         try:
             item.rename(new_name)
-            print('\t'+item.name+'\t->\t'+new_name.name)
+            print('\t'+str(item)+'\t->\t'+str(new_name))
             n+=1    # increment n when rename is success
         except FileExistsError as fee:
             show_error(f'File name already exixts, cannot rename : {fee.filename} -> {fee.filename2}',
@@ -312,7 +315,7 @@ def rene(base_path: Path, pat, templt, filedir=1, max_files=-1):
     attribs={}
     try:
         i=0
-        for item in base_path.iterdir():
+        for item in base_path.iterdir(): 
             # check whether to rename a file or dir or both
             if i!=max_files and ((filedir==0) or (filedir==1 and item.is_file()) or (filedir==2 and item.is_dir())) and (group:=re.fullmatch(pat, item.name)) != None:
                 # adding attributes
@@ -420,6 +423,7 @@ def main():
     try:
         rene(base_path, pat,templt,filedir, max_files)
     except Exception as e:
+        raise e
         sys.exit('Sorry, an error occured !!')
     input('press Enter to exit...')
     

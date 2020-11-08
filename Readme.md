@@ -2,7 +2,7 @@
 Rene is a simple python script to batch renaming files and folders with many functionalities and useful features. It is flexible, because it uses **regular-expression** instead of **glob** to search files by pattern. 
 
 > A simple command for renaming **all files** in **test** directory to text files with names prefixed with its extension.  
-`rene test ".*" "<:ext:>-\1.txt"`
+`rene test ".*" "<:ext:>-<:name:>.txt"`
 
 # Download
 Just download the **rene.py** file, then directly run it using command prompt or double clicking it (the latter opens rene in interactive mode) 
@@ -61,7 +61,7 @@ Template is a string representing the new name of each file matched by the given
 ## Incrementor 
 Incrementor is a special feature of this script. It generates a value for each file by incrementing initial value. 
 
-Incrementors are included in the form of `<:name [args]:>`  
+Incrementors are included in the form of `<:name [args]:>` ('name' represented here is the short name of the incrementor)  
 
 **name** - the name of the incrementor  
 **args** - arguments given to incrementor (this is optional)  
@@ -77,37 +77,46 @@ Incrementors are included in the form of `<:name [args]:>`
 
 ### Types:
 #### NumIncrementor
-**name** - num
+This gives series of *numbers* (1, 2, 3...)
+
+**short-name** - num
 
  Arguments | discription | type | default-value
 -----------|-------------|------|--------------
  init    | Initial value to this Incrementor | Number | 0  
  step    | Incrementing step | Number | 1    
- width   | Minmum width to the generated value. Remainig spaces are filled by 0. If the generated value is negative, minus sign should be in first| Positive-Number | 0  
------------------------------------------------
+ width   | Minmum width to the generated value. Remainig spaces are filled by 0. If the generated value is negative, minus sign should be in first| Positive-Number | based on initial value (if we want initial value is to be **1** and width is to be **5** we can give **00001** as initial value)  
+ 
+<br>
 
 #### AlphaIncrementor
-**name** - alpha
+This gives series of *alphabets* (a, b, c, ..., aab, aac, ...)
+
+**short-name** - alpha
 
  Arguments | discription | type | default-value
 -----------|-------------|------|--------------
  init    | Initial value to this Incrementor | String | A  
  step    | Incrementing step | Positive-Number | 1    
- case    | case of the generated alphabet. `lw` - lower-case, `up` - upper-case, `lu` - both | Any of string [lw, up, lu] | same as initial value  
------------------------------------------------
+ case    | case of the generated alphabet. `lw` - lower-case, `up` - upper-case, `lu` - both | Any of string [lw, up, lu] | same as initial value   
+
+<br>
 
 #### AlnumIncrementor
-**name** - alnum
+This gives *alphanumeric* series (A0, A1, A2, ..., MX3, MX4, ...)
+
+**short-name** - alnum
 
  Arguments | discription | type | default-value
 -----------|-------------|------|--------------
  init      | Initial value to this Incrementor | Number+String | A0  
  step      | Incrementing step | Positive-Number | 1  
- case      | case of alphabet part. `lw` - lower-case, `up` - upper-case, `lu` - both | Any of string [lw, up, lu] | based on alphabet part in initial value
- intWidth  | Minimum width to integer part | Positive-Number | 0
+ case      | case of alphabet part. `lw` - lower-case, `up` - upper-case, `lu` - both | Any of string [lw, up, lu] | same as alphabet part in initial value
+ intWidth  | Minimum width to integer part | Positive-Number | based on integer part in initial value
  intMaxCount | Maximum value for integer part | Positive-Number | based on integer part in inital value (i.e. no. of digits in integer part x 10)
------------------------------------------------
 
+# Contribution
+Any contributions are welcome :smiley:
 
 # License
 This software is licensed with MIT License.

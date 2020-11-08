@@ -47,16 +47,16 @@ Template is a string representing the new name of each file matched by the given
   Some attributes are common for all files (static attributes) and some are different (non-static attributes).
 
 #### Static attributes :
-- *base_dir*  -  base directory
-- *parent*    -  parent directory of files
+- **base_dir**  -  base directory
+- **parent**    -  parent directory of files
 
 #### Non-static attributes :
-- *name*      -  name of the file (without extension) or directory  
+- **name**      -  name of the file (without extension) or directory  
 
 *below are only specific for files (not directory)*  
 
-- *full_name* -  full name of the file with extension
-- *ext*       -  extension of the file
+- **full_name** -  full name of the file with extension
+- **ext**       -  extension of the file
 
 ## Incrementor 
 Incrementor is a special feature of this script. It generates a value for each file by incrementing initial value. 
@@ -86,7 +86,7 @@ This gives series of *numbers* (1, 2, 3...)
  init    | Initial value to this Incrementor | Number | 0  
  step    | Incrementing step | Number | 1    
  width   | Minmum width to the generated value. Remainig spaces are filled by 0. If the generated value is negative, minus sign should be in first| Positive-Number | based on initial value (if we want initial value is to be **1** and width is to be **5** we can give **00001** as initial value)  
- 
+
 <br>
 
 #### AlphaIncrementor

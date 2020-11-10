@@ -48,7 +48,7 @@ Template is a string representing the new name of each file matched by the given
 
 #### Static attributes :
 - **base_dir**  -  base directory
-- **parent**    -  parent directory of files
+- **parent**    -  parent directory of base directory
 
 #### Non-static attributes :
 - **name**      -  name of the file (without extension) or directory  

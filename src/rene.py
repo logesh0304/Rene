@@ -121,7 +121,6 @@ class Incrementor:
             else :
                 raise ValueError(f'There is no incrementor type like \'{incrType}\'')
         except TypeError as te:
-            raise te
             show_error(f'Invalid arguments passed to {incrType.capitalize()}Incrementor')
 
     def incr(self):
@@ -423,7 +422,6 @@ def main():
     try:
         rene(base_path, pat,templt,filedir, max_files)
     except Exception as e:
-        raise e
         sys.exit('Sorry, an error occured !!')
     input('press Enter to exit...')
     

@@ -80,7 +80,7 @@ class ListIncrementor:
         else:   
             # getting quotien
             # t and remainder
-            # remainder, quotient is for incrementing element in idx, before idx
+            # remainder, quotient is for inementing element in idx, before idx
             # by considering "current place is incremented by total length of base, the place before current is incremented by 1 and the recurtion follows"
             q,r=divmod(inc_idx, len(self.base))
             lst[idx]=self.base[r]
@@ -279,26 +279,31 @@ def sub_attrib(file_pat: str, attribs: Dict[str, str]={}):
 # prints the error message without stacktrace
 #  exit_ -> to exit after printing error message
 #  conform_before_exit -> if true ask user to exit or not. This has no effect if "exit_" is false
-def show_error(err, header='Error', exit_=True, confirm_before_exit=False, confirm_msg='Would you like to continue ?'):
-    print(header+': 'if header else '', err, sep='', file=sys.stderr)
+def show_error(err, header='Error', exit_=True, confirm_before_exit=False, confirm_msg='Would you like to continue ?',exit_msg='', inverse_yn=False):
+    if err :
+        print(header+': 'if header else '', err, sep='', file=sys.stderr)
     if exit_:
         if confirm_before_exit :
+            positive, negative = ('y', 'n') if not inverse_yn else ('n', 'y')
             # ask the question until you answer yes(y) or no(n) 
             while True :
                 a=input(confirm_msg+' (y/n) :').lower()
-                if a == 'n' :
-                    sys.exit()
-                elif a == 'y':
+                if a == 'y' :
                     break
+                elif a == 'n':
+                    sys.exit(exit_msg)
         else :
-            sys.exit()
+            sys.exit(exit_msg)
     
 def rename(name_map): 
     n=0
+    print("Preview:")
+    for item, new_name in name_map.items() :
+            print('\t'+str(item)+'\t->\t'+str(new_name))
+    show_error('', confirm_before_exit=True, confirm_msg='Confirm to rename', exit_msg='Rename cancelled !!')
     for item, new_name in name_map.items() :
         try:
             item.rename(new_name)
-            print('\t'+str(item)+'\t->\t'+str(new_name))
             n+=1    # increment n when rename is success
         except FileExistsError as fee:
             show_error(f'File name already exixts, cannot rename : {fee.filename} -> {fee.filename2}',

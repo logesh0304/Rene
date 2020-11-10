@@ -10,8 +10,6 @@ Just download the **rene.py** file, then directly run it using command prompt or
 >**Note:** you should have **python 3.7** installed on your system to run this script
 
 # Usage
-
-
 You can use rene in **command line**.
 
 ```
@@ -116,6 +114,10 @@ This gives *alphanumeric* series (A0, A1, A2, ..., MX3, MX4, ...)
  case      | case of alphabet part. `lw` - lower-case, `up` - upper-case, `lu` - both | Any of string [lw, up, lu] | same as alphabet part in initial value
  intWidth  | Minimum width to integer part | Positive-Number | based on integer part in initial value
  intMaxCount | Maximum value for integer part | Positive-Number | based on integer part in inital value (i.e. no. of digits in integer part x 10)
+
+<br>
+
+>**Warning:** files renamed by this script cannot be undowed
 
 # Contribution
 Any contributions are welcome :smiley:

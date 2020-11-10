@@ -31,7 +31,9 @@ rene [ -f | -d | -a ]  [ [-base] <basedir>] [-pat] pattern> [-templt] <template>
      This has use only in the case where the file name is same as any of arguments.
 
   -max       - maximum number of files to be renamed
+  
   -h shows this help
+  -v shows version of this script 
 ```
 
 You can also use rene in **interactive mode** by double clicking the rene.py or executing it without giving arguments.
@@ -48,7 +50,7 @@ Template is a string representing the new name of each file matched by the given
 
 #### Static attributes :
 - **base_dir**  -  base directory
-- **parent**    -  parent directory of base directory
+- **parent**    -  parent of base directory
 
 #### Non-static attributes :
 - **name**      -  name of the file (without extension) or directory  

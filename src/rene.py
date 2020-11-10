@@ -29,7 +29,7 @@ import typing
 from pathlib import Path
 import array
 
-_version='1.0.0'
+_version='v1.0.0'
 _help="""usage: rene [ -f | -d | -a ]  [ [-base] <basedir>] [-pat] <pattern> [-templt] <template> [-max <number>]
 
   -f         - files only
@@ -48,6 +48,7 @@ _help="""usage: rene [ -f | -d | -a ]  [ [-base] <basedir>] [-pat] <pattern> [-t
   -max       - maximum number of files to be renamed
 
   -h shows this help
+  -v shows version of this script 
 """
 
 _filedir={'-a' : 0, '-f' : 1, '-d' : 2}
@@ -345,6 +346,7 @@ def parse_args():
         while(args):
                 arg=args.popleft()
                 if arg == '-h' : sys.exit(_help)
+                if arg == '-v' : sys.exit(_version)
                 elif arg in _filedir : filedir=_filedir[arg]
                 elif arg == '-max' : max_files=int(args.popleft())
                 elif arg == '-base' : base_dir=args.popleft()
@@ -353,7 +355,7 @@ def parse_args():
                 else:
                     bpt.insert(0, arg)
     except IndexError or ValueError:
-        sys.exit('Invalid arguments given !!')
+        sys.exit('Given arguments are invalid !!\n'+_help)
 
     for i in bpt:
         if not templt:
@@ -363,10 +365,10 @@ def parse_args():
         elif not base_dir:
             base_dir=i
         else:
-            sys.exit('Invalid arguments given !!')
+            sys.exit('Given arguments are invalid !!\n\n'+_help)
 
     if not (pat and templt):
-        sys.exit('Invalid arguments given !!')
+        sys.exit('Given arguments are invalid !!\n'+_help)
 
     return filedir, base_dir, max_files, pat, templt
 

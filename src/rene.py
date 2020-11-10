@@ -276,9 +276,6 @@ def sub_attrib(file_pat: str, attribs: Dict[str, str]={}):
 
     return final_str
 
-# prints the error message without stacktrace
-#  exit_ -> to exit after printing error message
-#  conform_before_exit -> if true ask user to exit or not. This has no effect if "exit_" is false
 def show_error(err, header='Error', exit_=True, confirm_before_exit=False, confirm_msg='Would you like to continue ?',exit_msg='', inverse_yn=False):
     if err :
         print(header+': 'if header else '', err, sep='', file=sys.stderr)

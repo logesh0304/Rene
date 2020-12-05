@@ -20,16 +20,17 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-import sys
 import collections
 import os
 import re
-from typing import *
+import sys
 import typing
+import pathlib
 from pathlib import Path
-import array
+import glob
+from typing import *
 
-_version='v1.0.0'
+_version='v1.1.0'
 _help="""usage: rene [ -f | -d | -a ]  [ [-base] <basedir>] [-pat] <pattern> [-templt] <template> [-max <number>]
 
   -f         - files only
@@ -243,17 +244,17 @@ class Incrementor:
             return to_return
 
 static_attribs={
-    'base_dir'  :'test',
+    'base'  :'',
     'parent'    :''
 }
 
 incrs: Dict[int, Incrementor]={}
 
-def sub_attrib(file_pat: str, attribs: Dict[str, str]={}):
+def sub_attrib(templt: str, attribs: Dict[str, str]={}):
     final_str=''
     last_pos=0  # end position of last match
     # iterating the group(1) of founded matches
-    for i, match in enumerate(re.finditer('<:(.+?):>', file_pat)):
+    for i, match in enumerate(re.finditer('<:(.+?):>', templt)):
         group = match.group(1)
         attrib, arg= group.split(' ', 1) if ' ' in group else (group, '')
         attrib_val=''
@@ -268,11 +269,11 @@ def sub_attrib(file_pat: str, attribs: Dict[str, str]={}):
             except KeyError as ke:
                 show_error(f'There is no attribute like "{attrib}", please use the correct attribute')
         # replace attribute with its value
-        final_str+=file_pat[last_pos:match.start()] + attrib_val
+        final_str+=templt[last_pos:match.start()] + attrib_val
         last_pos=match.end()
     # append unmatched remaining string to final_str
-    if last_pos != len(file_pat):
-        final_str+=file_pat[last_pos:]
+    if last_pos != len(templt):
+        final_str+=templt[last_pos:]
 
     return final_str
 
@@ -292,87 +293,131 @@ def show_error(err, header='Error', exit_=True, confirm_before_exit=False, confi
         else :
             sys.exit(exit_msg)
     
-def rename(name_map): 
-    n=0
-    print("Preview:")
-    for item, new_name in name_map.items() :
-            print('\t'+str(item)+'\t->\t'+str(new_name))
-    show_error('', confirm_before_exit=True, confirm_msg='Confirm to rename', exit_msg='Rename cancelled !!')
-    for item, new_name in name_map.items() :
-        try:
-            item.rename(new_name)
-            n+=1    # increment n when rename is success
-        except FileExistsError as fee:
-            show_error(f'File name already exixts, cannot rename : {fee.filename} -> {fee.filename2}',
-                header="Warning",
-                confirm_before_exit=True,
-                confirm_msg='would you like to skip this file ?'
-            )
-        except OSError as oe:
-            show_error(oe)
-    return n
+# rename file with new name  specified in name map.
+# if sort is True, it sorts the path for renaming the files in deepest subdirectory first 
+def rename(name_map, sort=False): 
+    if name_map :
+        n=0
+        print("Preview:")
+        for item, new_name in name_map.items() :
+                print('\t'+str(item.relative_to(base_path))+'\t->\t'+str(new_name.relative_to(base_path)))
+        show_error('', confirm_before_exit=True, confirm_msg='Confirm to rename', exit_msg='Rename cancelled !!')
+        if sort:
+            # sorting the paths by depth, for renameming the files in the subdirectories first
+            name_list=list(name_map.items())
+            name_list.sort(key = lambda x : str(x[0]).count('\\'), reverse=True)
+            name_map=dict(name_list)
+        for item, new_name in name_map.items() :
+            try:
+                item.rename(new_name)
+                n+=1    # increment n when rename is success
+            except FileExistsError as fee:
+                show_error(f'File name already exixts, cannot rename : {fee.filename} -> {fee.filename2}',
+                    header="Warning",
+                    confirm_before_exit=True,
+                    confirm_msg='would you like to skip this file ?'
+                )
+            except OSError as oe:
+                show_error(oe)
+        return n
+    else :
+        print('No files matched the pattern !!')
+        return None
         
-def rene(base_path: Path, pat, templt, filedir=1, max_files=-1):
-    name_map={}
+def get_newname(path: Path, templt, from_base=False):
     attribs={}
-    try:
-        i=0
-        for item in base_path.iterdir(): 
-            # check whether to rename a file or dir or both
-            if i!=max_files and ((filedir==0) or (filedir==1 and item.is_file()) or (filedir==2 and item.is_dir())) and (group:=re.fullmatch(pat, item.name)) != None:
-                # adding attributes
-                attribs["name"]=item.stem
-                if item.is_file() :
-                    attribs["full_name"]=item.name
-                    attribs["ext"]=item.suffix[1:]
-                new_name=sub_attrib(templt, attribs)  # sustituting attributes
-                name_map[item]=base_path.joinpath(group.expand(new_name))
-                i+=1
-    except FileNotFoundError as fnfe:
-        show_error(fnfe)
-    except re.error as rerr:
-        show_error(rerr, header='PatternError')
+    attribs['name']=path.stem
+    attribs['full_name']=path.name
+    attribs['ext']=path.suffix[1:] if path.is_file() else ''
+    # path of file(parent) relative to base-path
+    attribs['path']='' if (_:=str(path.parent.relative_to(base_path).as_posix())) == '.' else _+'/'
+    attribs['abs_path']=str(path.parent.resolve().as_posix())+'/'
+    # if from_base is True path is appended to new_name
+    return sub_attrib(templt if from_base else attribs['path']+templt, attribs)
 
-    n=rename(name_map)
-    print('Files matched:',len(name_map))
-    print('Files renamed:',n)
+def glob_search(pat, templt, filedir='f', max_files=-1, from_base=False):
+    name_map={}
+    matched = 0
+    for item in glob.iglob(str(base_path)+pat, recursive=True) :
+        path = Path(item)
+        if matched!=max_files and ((filedir=='a') or (filedir=='f' and path.is_file()) or (filedir=='d' and path.is_dir())) :
+            name_map[path]=base_path.joinpath(get_newname(path, templt, from_base))
+            matched+=1
+    return name_map        
 
-def parse_args():
+def recr_search(pat, templt, filedir='f', max_files=-1, s_type='bf', from_base=False):
+    name_map={}
+    matched = 0 
+    if s_type not in ['bf', 'df'] :
+        raise ValueError(f"{s_type} is not 'bf' or 'df'") 
+    for dir_path, dirs, files in os.walk(base_path, topdown=True if s_type=='bf' else False) :
+        p_list=files if filedir=='f' else (dirs if filedir=='d' else files+dirs)
+        for item in p_list :
+            path=Path(os.path.join(dir_path, item))
+            # posix-path is used (which uses / insdead if \)due to \ are used in regex replacement patterns
+            posixpath=path.relative_to(base_path).as_posix()
+            if matched!=max_files and (match:=re.fullmatch(pat, posixpath)) != None:
+                name_map[path]=base_path.joinpath(match.expand(get_newname(path, templt, from_base)))
+                matched+=1
+    return name_map
+
+def search(pat, templt, filedir='f', max_files=-1):
+    name_map={}
+    matched=0
+    for item in base_path.iterdir(): 
+        # check whether to rename a file or dir or both
+        if matched!=max_files and ((filedir=='a') or (filedir=='f' and item.is_file()) or (filedir=='d' and item.is_dir())) and (group:=re.fullmatch(pat, item.name)) != None:
+            name_map[item]=base_path.joinpath(group.expand(get_newname(item, templt)))
+            matched+=1
+    return name_map
+
+def parse_args() :
     args=collections.deque(sys.argv[1:])
-    filedir=1
-    max_files=-1
-    bpt=[]
-    base_dir=pat=templt = ''
+    unknown=[]
+    argval={
+        'base' : '',
+        'filedir' : 'f',
+        'pat' : None,
+        'templt' : None,
+        'max' : -1,
+        'glob' : False,
+        'recr' : False,
+        's_type' : 'bf', # deep search type : breath-first or depth-first
+        're_base' : False
+    }
 
     try:
         while(args):
                 arg=args.popleft()
-                if arg == '-h' : sys.exit(_help)
-                if arg == '-v' : sys.exit(_version)
-                elif arg in _filedir : filedir=_filedir[arg]
-                elif arg == '-max' : max_files=int(args.popleft())
-                elif arg == '-base' : base_dir=args.popleft()
-                elif arg == '-pat' : pat=args.popleft()
-                elif arg == '-templt' : templt=args.popleft()
-                else:
-                    bpt.insert(0, arg)
-    except IndexError or ValueError:
-        sys.exit('Given arguments are invalid !!\n'+_help)
+                if arg == '-h' :     sys.exit(_help)
+                if arg == '-v' :     sys.exit(_version)
+                elif arg == '-glob'            : argval['glob']=True
+                elif arg == '-base'            : argval['base']=args.popleft()
+                elif arg in ['-f', '-d', '-a'] : argval['filedir']=arg[1:]
+                elif arg == '-pat'             : argval['pat']=args.popleft()
+                elif arg == '-templt'          : argval['templt']=args.popleft()
+                elif arg == '-max'             : argval['max']=int(args.popleft())
+                elif arg == '-r'               : argval['recr']=True
+                elif arg in ['-bf', '-df']     : argval['s_type']=arg[1:]
+                elif arg == '-b'               : argval['re_base']=True
+                else: # positional arguments
+                    unknown.insert(0, arg)
 
-    for i in bpt:
-        if not templt:
-            templt=i
-        elif not pat:
-            pat=i
-        elif not base_dir:
-            base_dir=i
+    except IndexError or ValueError :
+        sys.exit('Given arguments are invalid !!\n'+_help)
+    
+    print(argval)
+    # pat and templt has priority over base
+    for val in unknown:
+        if not argval['templt']  : argval['templt']=val
+        elif not argval['pat']  : argval['pat']=val
+        elif not argval['base'] : argval['base']=val
         else:
-            sys.exit('Given arguments are invalid !!\n\n'+_help)
+            sys.exit('Given arguments are invalid !!\n'+_help)
 
-    if not (pat and templt):
+    if not (argval['pat'] and argval['templt']):
         sys.exit('Given arguments are invalid !!\n'+_help)
-
-    return filedir, base_dir, max_files, pat, templt
+    return argval
 
 def interact():
     base_dir=pat=templt=''
@@ -411,22 +456,43 @@ def interact():
 
     return  filedir, base_dir, max_files, pat, templt
 
+base_path=Path('')
 def main():
-    filedir, base_dir, max_files, pat, templt = parse_args() if len(sys.argv)>1 else interact()
-    base_path = Path(base_dir)
+    argval = parse_args() if len(sys.argv)>1 else interact()
+    global  base_path
+    base_path = Path(argval['base'])
     if base_path.absolute() == Path(__file__).parent :
         show_error('You are trying to rename the files in the folder where this program is running',
             header='Warning',
             confirm_before_exit=True,
             confirm_msg='Are you sure about renaming the files ?',
         )
-    # assignng static attributes
-    static_attribs['base_dir']=base_dir
+    # assigning static attributes
+    static_attribs['base']=argval['base']
     static_attribs['parent']= base_path.parent.name
     try:
-        rene(base_path, pat,templt,filedir, max_files)
+        if argval['glob'] :
+            name_map=glob_search(argval['pat'], argval['templt'], argval['filedir'], argval['max'], argval['re_base'])
+            n=rename(name_map, True)
+        else:
+            if argval['recr'] :
+                name_map=recr_search(argval['pat'], argval['templt'], argval['filedir'], argval['max'], argval['s_type'], argval['re_base'])
+                n=rename(name_map, True)
+            else :
+                name_map=search(argval['pat'], argval['templt'], argval['filedir'], argval['max'])
+                n=rename(name_map)
+        if not n is None:
+            print('Files matched:',len(name_map))
+            print('Files renamed:',n)
+        
+    except FileNotFoundError as fnfe:
+        show_error(fnfe)
+    except re.error as rerr:
+        show_error(rerr, header='PatternError')    
     except Exception as e:
-        sys.exit('Sorry, an error occured !!')
+        raise e
+        #sys.exit('Sorry, an error occured !!')
+
     input('press Enter to exit...')
     
 

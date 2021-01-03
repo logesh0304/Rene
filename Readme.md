@@ -1,40 +1,64 @@
 # Rene
-Rene is a simple python script to batch renaming files and folders with many functionalities and useful features. It is flexible, because it uses **regular-expression** instead of **glob** to search files by pattern. 
+Rene is a simple python script to batch renaming files and folders with many functionalities and useful features. It is flexible, because it uses **regular-expression** and **glob** to search files by pattern. 
 
 > A simple command for renaming **all files** in **test** directory to text files with names prefixed with its extension.  
 `rene test ".*" "<:ext:>-<:name:>.txt"`
 
-# Download
-Just download the **rene.py** file, then directly run it using command prompt or double clicking it (the latter opens rene in interactive mode) 
+# What's new 
+- It can also search files using **glob** pattern in addition to regex.
+- It can now rename files in sub-directories also.
+- Preview before renaming files.
+- You can specify maximum number of files to rename.
 
->**Note:** you should have **python 3.7** installed on your system to run this script
+# Download
+Just download the *rene.py* file at **[here](https://github.com/logesh0304/Rene/releases/latest)**, then directly run it using command prompt or double clicking it if you installed python on your system. (the latter opens rene in interactive mode) 
+
+>**Note:** This is made on **python 3.7** so you should have python version similar this installed on your system to run this script
 
 # Usage
 You can use rene in **command line**.
 
 ```
-rene [ -f | -d | -a ]  [ [-base] <basedir>] [-pat] pattern> [-templt] <template> [-max <number>]
+  rene [-glob] [ -f | -d | -a ]  [[-base] <basedir>] [-pat] <pattern> [-templt] <template> 
+            [-max <number>] [-r] [ -bf | -df ] [-p]
+            [-h] [-v]
 
-  -f         - files only
-  -d         - directory only
-  -a         - any 
-  (-f is default)
+    -glob      - match files using 'glob' instead of 'regex' 
 
-  <basedir>  - base directory for searching files
-               (if it is not given, current directory will be used)
-  <pattern>  - regular expression pattern for searching file
-  <template> - template string for renaming matched files 
-  
-  ** you can also use -pat and -templt to specify the pattern and template.
-     This has use only in the case where the file name is same as any of arguments.
+            Note: You sould use glob-pattern (not regex-pattern) if this option is enabled.
+                  Group replacement is not supported in glob, you have to use 'attributes'
 
-  -max       - maximum number of files to be renamed
-  
-  -h shows this help
-  -v shows version of this script 
+    -f         - files only (default)
+    -d         - directory only
+    -a         - any
+    
+    <basedir>  - base directory for searching files (current directory is default)
+    <pattern>  - regex or glob pattern for searching file (use '/' as path seperator)
+    <template> - template string for renaming matched files
+
+            Note: you can also use -base, -pat and -templt to specify the base directory, pattern and template.
+                  This has use only in the case where the matching pattern is same as any of arguments.
+
+    -max       - maximum number of files to be renamed (-1 is default)
+    -r         - enables recursive-search-mode. This is used when you want to match files in subdirectories also
+
+            Note: use [^/] instead of . (matches path-seperator '/' also) in regex to match only names if recursive-search-mode is enabled
+
+    -bf        - search files in breadth-first manner
+    -df        - search files in depth-first manner
+    
+            Note: The above two works only when recursive-search-mode is enabled and it is only for regex.
+                  Using -r, -bf, -df has no effect in glob (always do recursive search)
+
+    -p         - rename the file's path from base directory (only for recursive-search-mode).
+                
+    -h shows this help
+    -v shows version of this script
+    -i enter into interactive mode
+
 ```
 
-You can also use rene in **interactive mode** by double clicking the rene.py or executing it without giving arguments.
+You can also use rene in **interactive mode** by executing the rene.py directly without giving any arguments or by using **-i** option in command line.
 
 >**Note:** In this readme, files and directories are commonly known as files in some places.
 
@@ -117,7 +141,7 @@ This gives *alphanumeric* series (A0, A1, A2, ..., MX3, MX4, ...)
 
 <br>
 
->**Warning:** files renamed by this script cannot be undowed
+>**Warning:** files renamed by this script cannot be undoed
 
 # Contribution
 Any contributions are welcome :smiley:

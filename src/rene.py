@@ -31,28 +31,47 @@ import glob
 from typing import *
 
 _version='v1.1.0'
-_help="""usage: rene [ -f | -d | -a ]  [ [-base] <basedir>] [-pat] <pattern> [-templt] <template> [-max <number>]
+_help="""
+  usage: rene [-glob] [ -f | -d | -a ]  [[-base] <basedir>] [-pat] <pattern> [-templt] <template> 
+            [-max <number>] [-r] [ -bf | -df ] [-p]
+            [-h] [-v]
 
-  -f         - files only
-  -d         - directory only
-  -a         - any 
-  (-f is default)
+    -glob      - match files using 'glob' instead of 'regex' 
 
-  <basedir>  - base directory for searching files 
-                (if it is not given, current directory will be used)
-  <pattern>  - regular expression pattern for searching file
-  <template> - template string for renaming matched files
+            Note: You sould use glob-pattern (not regex-pattern) if this option is enabled.
+                  Group replacement is not supported in glob, you have to use 'attributes'
 
-  ** you can also use -pat and -templt to specify the pattern and template.
-     This has use only in the case where the file name is same as any of arguments.
+    -f         - files only (default)
+    -d         - directory only
+    -a         - any
+    
+    <basedir>  - base directory for searching files (current directory is default)
+    <pattern>  - regex or glob pattern for searching file (use '/' as path seperator)
+    <template> - template string for renaming matched files
 
-  -max       - maximum number of files to be renamed
+            Note: you can also use -base, -pat and -templt to specify the base directory, pattern and template.
+                  This has use only in the case where the matching pattern is same as any of arguments.
 
-  -h shows this help
-  -v shows version of this script 
+    -max       - maximum number of files to be renamed (-1 is default)
+    -r         - enables recursive-search-mode. This is used when you want to match files in subdirectories also
+
+            Note: use [^/] instead of . (matches path-seperator '/' also) in regex to match only names if recursive-search-mode is enabled
+
+    -bf        - search files in breadth-first manner
+    -df        - search files in depth-first manner
+    
+            Note: The above two works only when recursive-search-mode is enabled and it is only for regex.
+                  Using -r, -bf, -df has no effect in glob (always do recursive search)
+
+    -p         - rename the file's path from base directory (only for recursive-search-mode).
+                
+    -h shows this help
+    -v shows version of this script
+    -i enter into interactive mode
+
+  This is a open-source project, contribute to this project if you like.
+  For more details visit this project's github page, https://github.com/logesh0304/Rene
 """
-
-_filedir={'-a' : 0, '-f' : 1, '-d' : 2}
 
 class ListIncrementor:
     def __init__(self, base: List, initial: List=None, step: int=1):
@@ -243,9 +262,10 @@ class Incrementor:
                 self.current[1] = r
             return to_return
 
+# attributes common for all files
 static_attribs={
-    'base'  :'',
-    'parent'    :''
+    'base'   :'',
+    'base_parent' :''
 }
 
 incrs: Dict[int, Incrementor]={}
@@ -293,8 +313,8 @@ def show_error(err, header='Error', exit_=True, confirm_before_exit=False, confi
         else :
             sys.exit(exit_msg)
     
-# rename file with new name  specified in name map.
-# if sort is True, it sorts the path for renaming the files in deepest subdirectory first 
+# rename file with new name specified in name map.
+# if sort is True, it sorts the path of the files (files in deepest subdirectory has more priority)
 def rename(name_map, sort=False): 
     if name_map :
         n=0
@@ -324,45 +344,24 @@ def rename(name_map, sort=False):
         print('No files matched the pattern !!')
         return None
         
-def get_newname(path: Path, templt, from_base=False):
+# returns the new-name of the given file based on the given template
+def get_newname(path: Path, templt, rename_path=False):
     attribs={}
     attribs['name']=path.stem
     attribs['full_name']=path.name
     attribs['ext']=path.suffix[1:] if path.is_file() else ''
+    attribs['parent']=path.parent.name
     # path of file(parent) relative to base-path
-    attribs['path']='' if (_:=str(path.parent.relative_to(base_path).as_posix())) == '.' else _+'/'
+    attribs['path']='' if (_:=str(path.parent.relative_to(base_path).as_posix())) == '.' else _+'/' 
     attribs['abs_path']=str(path.parent.resolve().as_posix())+'/'
-    # if from_base is True path is appended to new_name
-    return sub_attrib(templt if from_base else attribs['path']+templt, attribs)
+    new_name=sub_attrib(templt, attribs)
+    # if from_base is True, path is not appended to new name (for also renaming the path) 
+    # and templt should specifies the new path of the file
+    return new_name if rename_path else attribs['path']+new_name
 
-def glob_search(pat, templt, filedir='f', max_files=-1, from_base=False):
-    name_map={}
-    matched = 0
-    for item in glob.iglob(str(base_path)+pat, recursive=True) :
-        path = Path(item)
-        if matched!=max_files and ((filedir=='a') or (filedir=='f' and path.is_file()) or (filedir=='d' and path.is_dir())) :
-            name_map[path]=base_path.joinpath(get_newname(path, templt, from_base))
-            matched+=1
-    return name_map        
-
-def recr_search(pat, templt, filedir='f', max_files=-1, s_type='bf', from_base=False):
-    name_map={}
-    matched = 0 
-    if s_type not in ['bf', 'df'] :
-        raise ValueError(f"{s_type} is not 'bf' or 'df'") 
-    for dir_path, dirs, files in os.walk(base_path, topdown=True if s_type=='bf' else False) :
-        p_list=files if filedir=='f' else (dirs if filedir=='d' else files+dirs)
-        for item in p_list :
-            path=Path(os.path.join(dir_path, item))
-            # posix-path is used (which uses / insdead if \)due to \ are used in regex replacement patterns
-            posixpath=path.relative_to(base_path).as_posix()
-            if matched!=max_files and (match:=re.fullmatch(pat, posixpath)) != None:
-                name_map[path]=base_path.joinpath(match.expand(get_newname(path, templt, from_base)))
-                matched+=1
-    return name_map
-
+# search the files is current directory using regex pattern
 def search(pat, templt, filedir='f', max_files=-1):
-    name_map={}
+    name_map={} # dict containg oldname (name means path of the file) and newname
     matched=0
     for item in base_path.iterdir(): 
         # check whether to rename a file or dir or both
@@ -371,10 +370,37 @@ def search(pat, templt, filedir='f', max_files=-1):
             matched+=1
     return name_map
 
-def parse_args() :
-    args=collections.deque(sys.argv[1:])
-    unknown=[]
-    argval={
+# search the files recursively (i.e. also in subdirectory) using regex pattern 
+# form_base specifies whether to rename only name of the file (false)(default) or entire path of the file from base_directory (true)
+def recr_search(pat, templt, filedir='f', max_files=-1, s_type='bf', rename_path=False):
+    name_map={}
+    matched = 0 
+    if s_type not in ['bf', 'df'] :
+        raise ValueError(f"{s_type} is not 'bf' or 'df'") 
+    for dir_path, dirs, files in os.walk(base_path, topdown=True if s_type=='bf' else False) :
+        p_list=files if filedir=='f' else (dirs if filedir=='d' else files+dirs)
+        for item in p_list : 
+            path=Path(os.path.join(dir_path, item))
+            # posix-path is used (which uses / insdead if \)due to \ are used in regex replacement patterns
+            posixpath=path.relative_to(base_path).as_posix()
+            if matched!=max_files and (match:=re.fullmatch(pat, posixpath)) != None:
+                name_map[path]=base_path.joinpath(match.expand(get_newname(path, templt, rename_path)))
+                matched+=1
+    return name_map
+
+# search the files using glob pattern
+def glob_search(pat, templt, filedir='f', max_files=-1, rename_path=False):
+    name_map={}
+    matched = 0
+    for item in glob.iglob(str(base_path)+'\\'+pat, recursive=True) :
+        path = Path(item)
+        if matched!=max_files and ((filedir=='a') or (filedir=='f' and path.is_file()) or (filedir=='d' and path.is_dir())) :
+            name_map[path]=base_path.joinpath(get_newname(path, templt, rename_path))
+            matched+=1
+    return name_map       
+
+# default values for command line arguments
+arg_def_val={
         'base' : '',
         'filedir' : 'f',
         'pat' : None,
@@ -382,15 +408,21 @@ def parse_args() :
         'max' : -1,
         'glob' : False,
         'recr' : False,
-        's_type' : 'bf', # deep search type : breath-first or depth-first
-        're_base' : False
-    }
+        'rs_type' : 'bf', # recursive search type : breath-first or depth-first
+        'rn_path' : False
+}
+
+def parse_args() :
+    args=collections.deque(sys.argv[1:])
+    argval=arg_def_val.copy()
+    unknown=[]
 
     try:
         while(args):
                 arg=args.popleft()
                 if arg == '-h' :     sys.exit(_help)
-                if arg == '-v' :     sys.exit(_version)
+                elif arg == '-v' :   sys.exit(_version)
+                elif arg == '-i' :   return interact()
                 elif arg == '-glob'            : argval['glob']=True
                 elif arg == '-base'            : argval['base']=args.popleft()
                 elif arg in ['-f', '-d', '-a'] : argval['filedir']=arg[1:]
@@ -398,15 +430,14 @@ def parse_args() :
                 elif arg == '-templt'          : argval['templt']=args.popleft()
                 elif arg == '-max'             : argval['max']=int(args.popleft())
                 elif arg == '-r'               : argval['recr']=True
-                elif arg in ['-bf', '-df']     : argval['s_type']=arg[1:]
-                elif arg == '-b'               : argval['re_base']=True
+                elif arg in ['-bf', '-df']     : argval['rs_type']=arg[1:]
+                elif arg == '-p'               : argval['rn_path']=True
                 else: # positional arguments
                     unknown.insert(0, arg)
 
     except IndexError or ValueError :
         sys.exit('Given arguments are invalid !!\n'+_help)
-    
-    print(argval)
+
     # pat and templt has priority over base
     for val in unknown:
         if not argval['templt']  : argval['templt']=val
@@ -420,46 +451,63 @@ def parse_args() :
     return argval
 
 def interact():
-    base_dir=pat=templt=''
-    max_files=-1
     print('Rene - Interactive Mode')
+    argval=arg_def_val.copy()
+
+    # help, exit
     res=input("press Enter to continue or type 'help' to display help and 'quit' to exit\n")
     if res=='help' :
         print(_help)
         return interact()
     elif res=='quit' :
         sys.exit()
+    print('Enter nothing for default values')
 
-    base_dir=input('> Base-directory (enter nothing for current directory) :')
+    # base
+    if base:=input('> Base-directory (current directory is default) :') : argval['base']=base
+    # else, it use default value in argval
 
-    pat=input('> Pattern :')
-    while not pat:
+    # is_glob
+    if input('> [r]egex (default) or [g]lob (r/g) :') == 'g' : argval['glob']=True
+
+    # pat
+    while not (pat:=input('> Pattern :')):
         print('This cannot be empty !!')
-        pat=input('> Pattern :')
+    argval['pat']=pat
 
-    templt=input('> Template :')
-    while not templt:
+    # templt
+    while not (templt:=input('> Template :')):
         print('This cannot be empty !!')
-        templt=input('> Template :')
+    argval['templt']=templt
 
-    print('Rename only,\n\t1. files\n\t2. directory\n\t3. both')
-    tmp_fd=input('> Enter [1/2/3] (enter nothing for files only) :')
-    filedir = int(tmp_fd) if tmp_fd in ('1','2','3') else 1
+    # file-dir
+    if (tmp_fd:=input('Rename only,\n\t1. [f]iles (default)\n\t2. [d]irectory\n\t3. [a]ny\n> Enter (f/d/a) :')) in ('f','d','a') :
+        argval['filedir']=tmp_fd
     
+    # max
     while True :
-        temp=input('> Maximum files (-1 or nothing means no limit) :')
         try:
-            max_files=int(temp) if temp else -1
+            if max_:=input('> Maximum files (-1 (default) means no limit) :') :
+                argval['max']=int(max_)
             break
         except ValueError:
             print('Value should be an integer !!')
 
-    return  filedir, base_dir, max_files, pat, templt
+    # recr
+    if input('> Enable recursive-search-mode (y/n default) :') == 'y' : argval['recr']=True
+
+    # s_type
+    if input('> Recursive search type,\n\t[b]readth-first (default) or [d]epth-first (b/d) :') == 'd' : argval['rs_type']='df'
+
+    # from_base
+    if input('> Rename path of file (y/n default) :') == 'y' : argval['rn_path']=True
+    print() # prints empty line
+    return argval
 
 base_path=Path('')
 def main():
     argval = parse_args() if len(sys.argv)>1 else interact()
-    global  base_path
+    global base_path
     base_path = Path(argval['base'])
     if base_path.absolute() == Path(__file__).parent :
         show_error('You are trying to rename the files in the folder where this program is running',
@@ -469,14 +517,14 @@ def main():
         )
     # assigning static attributes
     static_attribs['base']=argval['base']
-    static_attribs['parent']= base_path.parent.name
+    static_attribs['base_parent']= base_path.parent.name
     try:
         if argval['glob'] :
-            name_map=glob_search(argval['pat'], argval['templt'], argval['filedir'], argval['max'], argval['re_base'])
+            name_map=glob_search(argval['pat'], argval['templt'], argval['filedir'], argval['max'], argval['rn_path'])
             n=rename(name_map, True)
         else:
             if argval['recr'] :
-                name_map=recr_search(argval['pat'], argval['templt'], argval['filedir'], argval['max'], argval['s_type'], argval['re_base'])
+                name_map=recr_search(argval['pat'], argval['templt'], argval['filedir'], argval['max'], argval['rs_type'], argval['rn_path'])
                 n=rename(name_map, True)
             else :
                 name_map=search(argval['pat'], argval['templt'], argval['filedir'], argval['max'])
@@ -491,8 +539,7 @@ def main():
         show_error(rerr, header='PatternError')    
     except Exception as e:
         raise e
-        #sys.exit('Sorry, an error occured !!')
-
+        sys.exit('Sorry, an error occured !!')
     input('press Enter to exit...')
     
 

@@ -63,7 +63,9 @@ You can also use rene in **interactive mode** by executing the rene.py directly 
 >**Note:** In this readme, files and directories are commonly known as files in some places.
 
 # Constructing Template 
-Template is a string representing the new name of each file matched by the given regex pattern. Template can include *attributes* and *Incrementors*
+Template is a string representing the new name of each file matched by the given regex or glob pattern. Template can include *attributes* and *Incrementors*
+
+>**Note:** If you don't know about regex or glob, google about it.
 
 ## Attributes
   You can include attributes like filename, extension, parent-directory in new name of the file. Attribute should be given in the form of `<:Attribute_name:>`. (i.e. between `<:` and `:>`)  

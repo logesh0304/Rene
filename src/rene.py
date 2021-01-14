@@ -461,7 +461,7 @@ def interact():
         return interact()
     elif res=='quit' :
         sys.exit()
-    print('Enter nothing for default values')
+    print('Note: Enter nothing for default values\n')
 
     # base
     if base:=input('> Base-directory (current directory is default) :') : argval['base']=base

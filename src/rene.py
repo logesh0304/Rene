@@ -30,6 +30,20 @@ from pathlib import Path
 import glob
 from typing import *
 
+_head=r"""
+            ==========================================================
+            
+                ||\\\\\\\   ||/////////  ||\      ||   ||/////////
+                ||      ||  ||           ||\\     ||   ||            
+                ||      ||  ||           || \\    ||   ||
+                ||      ||  ||\\\\\\\\   ||  \\   ||   ||\\\\\\\
+                ||///////   ||           ||   \\  ||   ||
+                ||\\        ||           ||    \\ ||   ||
+                ||  \\      ||           ||     \\||   ||
+                ||    \\\   ||\\\\\\\\\  ||      \||   ||\\\\\\\\\
+                
+            ==========================================================
+"""
 _version='v1.1.0'
 _help="""
   usage: rene [-glob] [ -f | -d | -a ]  [[-base] <basedir>] [-pat] <pattern> [-templt] <template> 
@@ -451,6 +465,7 @@ def parse_args() :
     return argval
 
 def interact():
+    print(_head)
     print('Rene - Interactive Mode')
     argval=arg_def_val.copy()
 
